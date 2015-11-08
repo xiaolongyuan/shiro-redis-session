@@ -1,0 +1,386 @@
+<html>
+<head>
+<title>ShiroSessionService.java</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.ln { color: rgb(0,0,0); font-weight: normal; font-style: normal; }
+.s0 { color: rgb(255,0,127); }
+.s1 { color: rgb(207,191,173); }
+.s2 { color: rgb(255,0,127); }
+.s3 { color: rgb(255,255,255); }
+.s4 { color: rgb(249,250,244); }
+.s5 { color: rgb(236,228,126); }
+.s6 { color: rgb(196,140,255); }
+.ls0 { height: 1px; border-width: 0; color: rgb(91,90,78); background-color:rgb(91,90,78)}
+</style>
+</head>
+<BODY BGCOLOR="#272822">
+<TABLE CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#C0C0C0" >
+<TR><TD><CENTER>
+<FONT FACE="Arial, Helvetica" COLOR="#000000">
+ShiroSessionService.java</FONT>
+</center></TD></TR></TABLE>
+<pre>
+<span class="s0">package </span><span class="s1">io</span><span class="s2">.</span><span class="s1">longyuan</span><span class="s2">.</span><span class="s1">shiro</span><span class="s2">.</span><span class="s1">redissession</span><span class="s2">.</span><span class="s1">service</span><span class="s2">;</span><span class="s1"> 
+ 
+ 
+</span><span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">google</span><span class="s2">.</span><span class="s1">common</span><span class="s2">.</span><span class="s1">collect</span><span class="s2">.</span><span class="s1">Lists</span><span class="s2">;</span><span class="s1"> 
+</span><span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">google</span><span class="s2">.</span><span class="s1">common</span><span class="s2">.</span><span class="s1">collect</span><span class="s2">.</span><span class="s1">Sets</span><span class="s2">;</span><span class="s1"> 
+</span><span class="s0">import </span><span class="s1">io</span><span class="s2">.</span><span class="s1">longyuan</span><span class="s2">.</span><span class="s1">shiro</span><span class="s2">.</span><span class="s1">redissession</span><span class="s2">.</span><span class="s1">session</span><span class="s2">.</span><span class="s1">CachingShiroSessionDao</span><span class="s2">;</span><span class="s1"> 
+</span><span class="s0">import </span><span class="s1">io</span><span class="s2">.</span><span class="s1">longyuan</span><span class="s2">.</span><span class="s1">shiro</span><span class="s2">.</span><span class="s1">redissession</span><span class="s2">.</span><span class="s1">session</span><span class="s2">.</span><span class="s1">ShiroSession</span><span class="s2">;</span><span class="s1"> 
+</span><span class="s0">import </span><span class="s1">lombok</span><span class="s2">.</span><span class="s1">Setter</span><span class="s2">;</span><span class="s1"> 
+</span><span class="s0">import </span><span class="s1">org</span><span class="s2">.</span><span class="s1">apache</span><span class="s2">.</span><span class="s1">commons</span><span class="s2">.</span><span class="s1">collections</span><span class="s2">.</span><span class="s1">CollectionUtils</span><span class="s2">;</span><span class="s1"> 
+</span><span class="s0">import </span><span class="s1">org</span><span class="s2">.</span><span class="s1">apache</span><span class="s2">.</span><span class="s1">shiro</span><span class="s2">.</span><span class="s1">SecurityUtils</span><span class="s2">;</span><span class="s1"> 
+</span><span class="s0">import </span><span class="s1">org</span><span class="s2">.</span><span class="s1">apache</span><span class="s2">.</span><span class="s1">shiro</span><span class="s2">.</span><span class="s1">session</span><span class="s2">.</span><span class="s1">Session</span><span class="s2">;</span><span class="s1"> 
+</span><span class="s0">import </span><span class="s1">org</span><span class="s2">.</span><span class="s1">slf4j</span><span class="s2">.</span><span class="s1">Logger</span><span class="s2">;</span><span class="s1"> 
+</span><span class="s0">import </span><span class="s1">org</span><span class="s2">.</span><span class="s1">slf4j</span><span class="s2">.</span><span class="s1">LoggerFactory</span><span class="s2">;</span><span class="s1"> 
+</span><span class="s0">import </span><span class="s1">org</span><span class="s2">.</span><span class="s1">springframework</span><span class="s2">.</span><span class="s1">data</span><span class="s2">.</span><span class="s1">redis</span><span class="s2">.</span><span class="s1">core</span><span class="s2">.</span><span class="s1">RedisTemplate</span><span class="s2">;</span><span class="s1"> 
+ 
+</span><span class="s0">import </span><span class="s1">java</span><span class="s2">.</span><span class="s1">io</span><span class="s2">.</span><span class="s1">Serializable</span><span class="s2">;</span><span class="s1"> 
+</span><span class="s0">import </span><span class="s1">java</span><span class="s2">.</span><span class="s1">util</span><span class="s2">.*;</span><span class="s1"> 
+ 
+</span><span class="s3">/** 
+ * 直接操作Session属性，不会被保存 
+ * 封装Session属性相关操作 Session属性发生改变时保存到Redis中并通知其它节点清空本地EhCache缓存 
+ */</span><span class="s1"> 
+</span><span class="s0">public class </span><span class="s1">ShiroSessionService </span><span class="s0">extends </span><span class="s1">ShiroSessionMessageListener </span><span class="s4">{</span><span class="s1"> 
+ 
+    </span><span class="s0">private </span><span class="s1">Logger logger </span><span class="s2">= </span><span class="s1">LoggerFactory</span><span class="s2">.</span><span class="s1">getLogger</span><span class="s4">(</span><span class="s1">ShiroSessionService</span><span class="s2">.</span><span class="s0">class</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+ 
+    @Setter 
+    </span><span class="s0">private </span><span class="s1">CachingShiroSessionDao sessionDao</span><span class="s2">;</span><span class="s1"> 
+ 
+    @Setter 
+    </span><span class="s0">private </span><span class="s1">RedisTemplate</span><span class="s2">&lt;</span><span class="s1">String</span><span class="s2">,</span><span class="s1">Serializable</span><span class="s2">&gt; </span><span class="s1">redisTemplate</span><span class="s2">;</span><span class="s1"> 
+ 
+    @Setter 
+    </span><span class="s0">private </span><span class="s1">String uncacheChannel </span><span class="s2">= </span><span class="s5">&quot;shiro.session.uncache&quot;</span><span class="s2">;</span><span class="s1"> 
+ <hr class="ls0">    </span><span class="s0">public void </span><span class="s1">sendUncacheSessionMessage</span><span class="s4">(</span><span class="s1">Serializable sessionId</span><span class="s4">){</span><span class="s1"> 
+        redisTemplate</span><span class="s2">.</span><span class="s1">convertAndSend</span><span class="s4">(</span><span class="s1">uncacheChannel</span><span class="s2">, </span><span class="s1">sessionId</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+    </span><span class="s4">}</span><span class="s1"> 
+ 
+ <hr class="ls0">    </span><span class="s0">public </span><span class="s1">ShiroSession       </span><span class="s6">0</span><span class="s1">yhn7gbhn6yktrgnmj56</span><span class="s4">[</span><span class="s1">gpycf89khrxdc8getSession</span><span class="s4">() {</span><span class="s1"> 
+        </span><span class="s0">return </span><span class="s4">(</span><span class="s1">ShiroSession</span><span class="s4">) </span><span class="s0">this</span><span class="s2">.</span><span class="s1">sessionDao</span><span class="s2">.</span><span class="s1">doReadSessionWithoutExpire</span><span class="s4">(</span><span class="s1">SecurityUtils</span><span class="s2">.</span><span class="s1">getSubject</span><span class="s4">()</span><span class="s2">.</span><span class="s1">getSession</span><span class="s4">()</span><span class="s2">.</span><span class="s1">getId</span><span class="s4">())</span><span class="s2">;</span><span class="s1"> 
+    </span><span class="s4">}</span><span class="s1"> 
+ 
+ <hr class="ls0">    </span><span class="s0">public void </span><span class="s1">setId</span><span class="s4">(</span><span class="s1">Serializable id</span><span class="s4">) {</span><span class="s1"> 
+        ShiroSession session </span><span class="s2">= </span><span class="s0">this</span><span class="s2">.</span><span class="s1">getSession</span><span class="s4">()</span><span class="s2">;</span><span class="s1"> 
+        session</span><span class="s2">.</span><span class="s1">setId</span><span class="s4">(</span><span class="s1">id</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+        </span><span class="s0">this</span><span class="s2">.</span><span class="s1">sessionDao</span><span class="s2">.</span><span class="s1">update</span><span class="s4">(</span><span class="s1">session</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+        </span><span class="s3">// 通过发布消息通知其他节点取消本地对session的缓存</span><span class="s1"> 
+        sendUncacheSessionMessage</span><span class="s4">( </span><span class="s1">session</span><span class="s2">.</span><span class="s1">getId</span><span class="s4">())</span><span class="s2">;</span><span class="s1"> 
+    </span><span class="s4">}</span><span class="s1"> 
+ <hr class="ls0">    </span><span class="s0">public void </span><span class="s1">setStopTimestamp</span><span class="s4">(</span><span class="s1">Date stopTimestamp</span><span class="s4">) {</span><span class="s1"> 
+        ShiroSession session </span><span class="s2">= </span><span class="s0">this</span><span class="s2">.</span><span class="s1">getSession</span><span class="s4">()</span><span class="s2">;</span><span class="s1"> 
+        session</span><span class="s2">.</span><span class="s1">setStopTimestamp</span><span class="s4">(</span><span class="s1">stopTimestamp</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+        </span><span class="s0">this</span><span class="s2">.</span><span class="s1">sessionDao</span><span class="s2">.</span><span class="s1">update</span><span class="s4">(</span><span class="s1">session</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+        </span><span class="s3">// 通过发布消息通知其他节点取消本地对session的缓存</span><span class="s1"> 
+        sendUncacheSessionMessage</span><span class="s4">( </span><span class="s1">session</span><span class="s2">.</span><span class="s1">getId</span><span class="s4">())</span><span class="s2">;</span><span class="s1"> 
+    </span><span class="s4">}</span><span class="s1"> 
+ <hr class="ls0">    </span><span class="s0">public void </span><span class="s1">setExpired</span><span class="s4">(</span><span class="s0">boolean </span><span class="s1">expired</span><span class="s4">) {</span><span class="s1"> 
+        ShiroSession session </span><span class="s2">= </span><span class="s0">this</span><span class="s2">.</span><span class="s1">getSession</span><span class="s4">()</span><span class="s2">;</span><span class="s1"> 
+        session</span><span class="s2">.</span><span class="s1">setExpired</span><span class="s4">(</span><span class="s1">expired</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+        </span><span class="s0">this</span><span class="s2">.</span><span class="s1">sessionDao</span><span class="s2">.</span><span class="s1">update</span><span class="s4">(</span><span class="s1">session</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+        </span><span class="s3">// 通过发布消息通知其他节点取消本地对session的缓存</span><span class="s1"> 
+        sendUncacheSessionMessage</span><span class="s4">( </span><span class="s1">session</span><span class="s2">.</span><span class="s1">getId</span><span class="s4">())</span><span class="s2">;</span><span class="s1"> 
+    </span><span class="s4">}</span><span class="s1"> 
+ <hr class="ls0">    </span><span class="s0">public void </span><span class="s1">setTimeout</span><span class="s4">(</span><span class="s0">long </span><span class="s1">timeout</span><span class="s4">) {</span><span class="s1"> 
+        ShiroSession session </span><span class="s2">= </span><span class="s0">this</span><span class="s2">.</span><span class="s1">getSession</span><span class="s4">()</span><span class="s2">;</span><span class="s1"> 
+        session</span><span class="s2">.</span><span class="s1">setTimeout</span><span class="s4">(</span><span class="s1">timeout</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+        </span><span class="s0">this</span><span class="s2">.</span><span class="s1">sessionDao</span><span class="s2">.</span><span class="s1">update</span><span class="s4">(</span><span class="s1">session</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+        </span><span class="s3">// 通过发布消息通知其他节点取消本地对session的缓存</span><span class="s1"> 
+        sendUncacheSessionMessage</span><span class="s4">(</span><span class="s1">session</span><span class="s2">.</span><span class="s1">getId</span><span class="s4">())</span><span class="s2">;</span><span class="s1"> 
+    </span><span class="s4">}</span><span class="s1"> 
+ <hr class="ls0">    </span><span class="s0">public void </span><span class="s1">setHost</span><span class="s4">(</span><span class="s1">String host</span><span class="s4">) {</span><span class="s1"> 
+        ShiroSession session </span><span class="s2">= </span><span class="s0">this</span><span class="s2">.</span><span class="s1">getSession</span><span class="s4">()</span><span class="s2">;</span><span class="s1"> 
+        session</span><span class="s2">.</span><span class="s1">setHost</span><span class="s4">(</span><span class="s1">host</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+        </span><span class="s0">this</span><span class="s2">.</span><span class="s1">sessionDao</span><span class="s2">.</span><span class="s1">update</span><span class="s4">(</span><span class="s1">session</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+        </span><span class="s3">// 通过发布消息通知其他节点取消本地对session的缓存</span><span class="s1"> 
+ 
+        sendUncacheSessionMessage</span><span class="s4">(</span><span class="s1">session</span><span class="s2">.</span><span class="s1">getId</span><span class="s4">())</span><span class="s2">;</span><span class="s1"> 
+    </span><span class="s4">}</span><span class="s1"> 
+ <hr class="ls0">    </span><span class="s0">public void </span><span class="s1">setAttributes</span><span class="s4">(</span><span class="s1">Map</span><span class="s2">&lt;</span><span class="s1">Object</span><span class="s2">, </span><span class="s1">Object</span><span class="s2">&gt; </span><span class="s1">attributes</span><span class="s4">) {</span><span class="s1"> 
+        ShiroSession session </span><span class="s2">= </span><span class="s0">this</span><span class="s2">.</span><span class="s1">getSession</span><span class="s4">()</span><span class="s2">;</span><span class="s1"> 
+        session</span><span class="s2">.</span><span class="s1">setAttributes</span><span class="s4">(</span><span class="s1">attributes</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+        </span><span class="s0">this</span><span class="s2">.</span><span class="s1">sessionDao</span><span class="s2">.</span><span class="s1">update</span><span class="s4">(</span><span class="s1">session</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+        </span><span class="s3">// 通过发布消息通知其他节点取消本地对session的缓存</span><span class="s1"> 
+        sendUncacheSessionMessage</span><span class="s4">( </span><span class="s1">session</span><span class="s2">.</span><span class="s1">getId</span><span class="s4">())</span><span class="s2">;</span><span class="s1"> 
+    </span><span class="s4">}</span><span class="s1"> 
+ <hr class="ls0">    </span><span class="s0">public </span><span class="s1">Map</span><span class="s2">&lt;</span><span class="s1">Object</span><span class="s2">, </span><span class="s1">Object</span><span class="s2">&gt; </span><span class="s1">getAttributes</span><span class="s4">() {</span><span class="s1"> 
+        </span><span class="s0">return this</span><span class="s2">.</span><span class="s1">getSession</span><span class="s4">()</span><span class="s2">.</span><span class="s1">getAttributes</span><span class="s4">()</span><span class="s2">;</span><span class="s1"> 
+    </span><span class="s4">}</span><span class="s1"> 
+ <hr class="ls0">    </span><span class="s0">public void </span><span class="s1">setAttribute</span><span class="s4">(</span><span class="s1">Object key</span><span class="s2">, </span><span class="s1">Object value</span><span class="s4">) {</span><span class="s1"> 
+        ShiroSession session </span><span class="s2">= </span><span class="s0">this</span><span class="s2">.</span><span class="s1">getSession</span><span class="s4">()</span><span class="s2">;</span><span class="s1"> 
+        session</span><span class="s2">.</span><span class="s1">setAttribute</span><span class="s4">(</span><span class="s1">key</span><span class="s2">, </span><span class="s1">value</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+        </span><span class="s0">this</span><span class="s2">.</span><span class="s1">sessionDao</span><span class="s2">.</span><span class="s1">update</span><span class="s4">(</span><span class="s1">session</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+        </span><span class="s3">// 通过发布消息通知其他节点取消本地对session的缓存</span><span class="s1"> 
+        sendUncacheSessionMessage</span><span class="s4">(</span><span class="s1">session</span><span class="s2">.</span><span class="s1">getId</span><span class="s4">())</span><span class="s2">;</span><span class="s1"> 
+    </span><span class="s4">}</span><span class="s1"> 
+ <hr class="ls0">    </span><span class="s0">public </span><span class="s1">Object getAttribute</span><span class="s4">(</span><span class="s1">Object key</span><span class="s4">) {</span><span class="s1"> 
+        </span><span class="s0">return this</span><span class="s2">.</span><span class="s1">getSession</span><span class="s4">()</span><span class="s2">.</span><span class="s1">getAttribute</span><span class="s4">(</span><span class="s1">key</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+    </span><span class="s4">}</span><span class="s1"> 
+ <hr class="ls0">    </span><span class="s0">public </span><span class="s1">Collection</span><span class="s2">&lt;</span><span class="s1">Object</span><span class="s2">&gt; </span><span class="s1">getAttributeKeys</span><span class="s4">() {</span><span class="s1"> 
+        </span><span class="s0">return this</span><span class="s2">.</span><span class="s1">getSession</span><span class="s4">()</span><span class="s2">.</span><span class="s1">getAttributeKeys</span><span class="s4">()</span><span class="s2">;</span><span class="s1"> 
+    </span><span class="s4">}</span><span class="s1"> 
+ <hr class="ls0">    </span><span class="s0">public </span><span class="s1">Object removeAttribute</span><span class="s4">(</span><span class="s1">Object key</span><span class="s4">) {</span><span class="s1"> 
+        ShiroSession session </span><span class="s2">= </span><span class="s0">this</span><span class="s2">.</span><span class="s1">getSession</span><span class="s4">()</span><span class="s2">;</span><span class="s1"> 
+        Object res </span><span class="s2">= </span><span class="s1">session</span><span class="s2">.</span><span class="s1">removeAttribute</span><span class="s4">(</span><span class="s1">key</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+        </span><span class="s0">this</span><span class="s2">.</span><span class="s1">sessionDao</span><span class="s2">.</span><span class="s1">update</span><span class="s4">(</span><span class="s1">session</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+        </span><span class="s3">// 通过发布消息通知其他节点取消本地对session的缓存</span><span class="s1"> 
+        sendUncacheSessionMessage</span><span class="s4">( </span><span class="s1">session</span><span class="s2">.</span><span class="s1">getId</span><span class="s4">())</span><span class="s2">;</span><span class="s1"> 
+        </span><span class="s0">return </span><span class="s1">res</span><span class="s2">;</span><span class="s1"> 
+    </span><span class="s4">}</span><span class="s1"> 
+ <hr class="ls0">    </span><span class="s3">/** 
+     * 在线会话的简单实现 
+     * 后续可以通过 keys统计数量，在通过SCAN 增量迭代取Session 
+     */</span><span class="s1"> 
+    @SuppressWarnings</span><span class="s4">(</span><span class="s5">&quot;unchecked&quot;</span><span class="s4">)</span><span class="s1"> 
+    </span><span class="s0">public </span><span class="s1">List</span><span class="s2">&lt;</span><span class="s1">Map</span><span class="s2">&lt;</span><span class="s1">String</span><span class="s2">, </span><span class="s1">Object</span><span class="s2">&gt;&gt; </span><span class="s1">getActiveSessions</span><span class="s4">() {</span><span class="s1"> 
+        List</span><span class="s2">&lt;</span><span class="s1">Map</span><span class="s2">&lt;</span><span class="s1">String</span><span class="s2">, </span><span class="s1">Object</span><span class="s2">&gt;&gt; </span><span class="s1">sessions </span><span class="s2">= </span><span class="s1">Lists</span><span class="s2">.</span><span class="s1">newLinkedList</span><span class="s4">()</span><span class="s2">;</span><span class="s1"> 
+</span><span class="s3">//        Collection&lt;Session&gt; activeSession = sessionDao.getActiveSessions();</span><span class="s1"> 
+</span><span class="s3">//        for (Session session : activeSession) {</span><span class="s1"> 
+</span><span class="s3">//            Map&lt;String, Object&gt; map = Maps.newHashMap();</span><span class="s1"> 
+</span><span class="s3">//            SimplePrincipalCollection principalCollection = (SimplePrincipalCollection) session.getAttribute(DefaultSubjectContext.PRINCIPALS_SESSION_KEY);</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//            if (principalCollection != null) {</span><span class="s1"> 
+</span><span class="s3">//                List&lt;Object&gt; listPrincipals = principalCollection.asList();</span><span class="s1"> 
+</span><span class="s3">//                Map&lt;String, Object&gt; attributes = (Map&lt;String, Object&gt;) listPrincipals.get(1);</span><span class="s1"> 
+</span><span class="s3">//                map.put(&quot;loginName&quot;, listPrincipals.get(0));</span><span class="s1"> 
+</span><span class="s3">//                map.put(&quot;name&quot;, attributes.get(&quot;name&quot;));</span><span class="s1"> 
+</span><span class="s3">//                map.put(&quot;ip&quot;, attributes.get(&quot;ip&quot;));</span><span class="s1"> 
+</span><span class="s3">//            } else {</span><span class="s1"> 
+</span><span class="s3">//                map.put(&quot;loginName&quot;, &quot;未登录&quot;);</span><span class="s1"> 
+</span><span class="s3">//                map.put(&quot;name&quot;, &quot;未登录&quot;);</span><span class="s1"> 
+</span><span class="s3">//                map.put(&quot;ip&quot;, &quot;未登录&quot;);</span><span class="s1"> 
+</span><span class="s3">//            }</span><span class="s1"> 
+</span><span class="s3">//            map.put(&quot;startTimestamp&quot;, session.getStartTimestamp());</span><span class="s1"> 
+</span><span class="s3">//            map.put(&quot;lastAccessTime&quot;, session.getLastAccessTime());</span><span class="s1"> 
+</span><span class="s3">//            sessions.add(map);</span><span class="s1"> 
+</span><span class="s3">//        }</span><span class="s1"> 
+        </span><span class="s0">return </span><span class="s1">sessions</span><span class="s2">;</span><span class="s1"> 
+    </span><span class="s4">}</span><span class="s1"> 
+ 
+ <hr class="ls0">    </span><span class="s0">public void </span><span class="s1">flushRedis</span><span class="s4">() {</span><span class="s1"> 
+        Collection</span><span class="s2">&lt;</span><span class="s1">Session</span><span class="s2">&gt; </span><span class="s1">activeSession </span><span class="s2">= </span><span class="s1">sessionDao</span><span class="s2">.</span><span class="s1">getActiveSessions</span><span class="s4">()</span><span class="s2">;</span><span class="s1"> 
+        </span><span class="s0">if </span><span class="s4">(</span><span class="s1">activeSession </span><span class="s2">!= </span><span class="s0">null</span><span class="s4">) {</span><span class="s1"> 
+            </span><span class="s0">for </span><span class="s4">(</span><span class="s1">Session session </span><span class="s2">: </span><span class="s1">activeSession</span><span class="s4">) {</span><span class="s1"> 
+                </span><span class="s0">try </span><span class="s4">{</span><span class="s1"> 
+                    sessionDao</span><span class="s2">.</span><span class="s1">doDelete</span><span class="s4">(</span><span class="s1">session</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+                </span><span class="s4">} </span><span class="s0">catch </span><span class="s4">(</span><span class="s1">Exception e</span><span class="s4">) {</span><span class="s1"> 
+ 
+                </span><span class="s4">}</span><span class="s1"> 
+            </span><span class="s4">}</span><span class="s1"> 
+        </span><span class="s4">}</span><span class="s1"> 
+    </span><span class="s4">}</span><span class="s1"> 
+ <hr class="ls0">    </span><span class="s0">public void </span><span class="s1">flushEhCache</span><span class="s4">() {</span><span class="s1"> 
+        Set</span><span class="s2">&lt;</span><span class="s1">Session</span><span class="s2">&gt; </span><span class="s1">sessions </span><span class="s2">= </span><span class="s1">Sets</span><span class="s2">.</span><span class="s1">newHashSet</span><span class="s4">()</span><span class="s2">;</span><span class="s1"> 
+        Collection</span><span class="s2">&lt;</span><span class="s1">Session</span><span class="s2">&gt; </span><span class="s1">ehCacheActiveSession </span><span class="s2">= </span><span class="s1">sessionDao</span><span class="s2">.</span><span class="s1">getEhCacheActiveSessions</span><span class="s4">()</span><span class="s2">;</span><span class="s1"> 
+        Collection</span><span class="s2">&lt;</span><span class="s1">Session</span><span class="s2">&gt; </span><span class="s1">activeSession </span><span class="s2">= </span><span class="s1">sessionDao</span><span class="s2">.</span><span class="s1">getActiveSessions</span><span class="s4">()</span><span class="s2">;</span><span class="s1"> 
+        </span><span class="s0">if </span><span class="s4">(</span><span class="s1">CollectionUtils</span><span class="s2">.</span><span class="s1">isNotEmpty</span><span class="s4">(</span><span class="s1">ehCacheActiveSession</span><span class="s4">)) {</span><span class="s1"> 
+            sessions</span><span class="s2">.</span><span class="s1">addAll</span><span class="s4">(</span><span class="s1">ehCacheActiveSession</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+        </span><span class="s4">}</span><span class="s1"> 
+        </span><span class="s0">if </span><span class="s4">(</span><span class="s1">CollectionUtils</span><span class="s2">.</span><span class="s1">isNotEmpty</span><span class="s4">(</span><span class="s1">activeSession</span><span class="s4">)) {</span><span class="s1"> 
+            sessions</span><span class="s2">.</span><span class="s1">addAll</span><span class="s4">(</span><span class="s1">activeSession</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+        </span><span class="s4">}</span><span class="s1"> 
+        </span><span class="s0">for </span><span class="s4">(</span><span class="s1">Session session </span><span class="s2">: </span><span class="s1">sessions</span><span class="s4">) {</span><span class="s1"> 
+            </span><span class="s0">try </span><span class="s4">{</span><span class="s1"> 
+                sessionDao</span><span class="s2">.</span><span class="s1">uncache</span><span class="s4">(</span><span class="s1">session</span><span class="s2">.</span><span class="s1">getId</span><span class="s4">())</span><span class="s2">;</span><span class="s1"> 
+            </span><span class="s4">} </span><span class="s0">catch </span><span class="s4">(</span><span class="s1">Exception e</span><span class="s4">) {</span><span class="s1"> 
+            </span><span class="s4">}</span><span class="s1"> 
+        </span><span class="s4">}</span><span class="s1"> 
+        logger</span><span class="s2">.</span><span class="s1">info</span><span class="s4">(</span><span class="s5">&quot;flushEhCache Project EhCacheActiveSessions {} &quot;</span><span class="s2">, </span><span class="s1">sessionDao</span><span class="s2">.</span><span class="s1">getEhCacheActiveSessions</span><span class="s4">()</span><span class="s2">.</span><span class="s1">size</span><span class="s4">())</span><span class="s2">;</span><span class="s1"> 
+    </span><span class="s4">}</span><span class="s1"> 
+ <hr class="ls0">    </span><span class="s0">public void </span><span class="s1">flushAll</span><span class="s4">() {</span><span class="s1"> 
+        Collection</span><span class="s2">&lt;</span><span class="s1">Session</span><span class="s2">&gt; </span><span class="s1">activeSession </span><span class="s2">= </span><span class="s1">sessionDao</span><span class="s2">.</span><span class="s1">getActiveSessions</span><span class="s4">()</span><span class="s2">;</span><span class="s1"> 
+        </span><span class="s0">if </span><span class="s4">(</span><span class="s1">activeSession </span><span class="s2">!= </span><span class="s0">null</span><span class="s4">) {</span><span class="s1"> 
+            </span><span class="s0">for </span><span class="s4">(</span><span class="s1">Session session </span><span class="s2">: </span><span class="s1">activeSession</span><span class="s4">) {</span><span class="s1"> 
+                </span><span class="s0">try </span><span class="s4">{</span><span class="s1"> 
+                    sessionDao</span><span class="s2">.</span><span class="s1">delete</span><span class="s4">(</span><span class="s1">session</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+                </span><span class="s4">} </span><span class="s0">catch </span><span class="s4">(</span><span class="s1">Exception e</span><span class="s4">) {</span><span class="s1"> 
+                </span><span class="s4">}</span><span class="s1"> 
+            </span><span class="s4">}</span><span class="s1"> 
+        </span><span class="s4">}</span><span class="s1"> 
+    </span><span class="s4">}</span><span class="s1"> 
+ <hr class="ls0">    @Override 
+    </span><span class="s0">public void </span><span class="s1">onMessage</span><span class="s4">(</span><span class="s1">ShiroSessionMessage message</span><span class="s4">) {</span><span class="s1"> 
+ 
+        logger</span><span class="s2">.</span><span class="s1">debug</span><span class="s4">(</span><span class="s5">&quot;channel {} , message {} &quot;</span><span class="s2">, </span><span class="s1">message</span><span class="s2">.</span><span class="s1">getChannel</span><span class="s4">()</span><span class="s2">, </span><span class="s1">message</span><span class="s2">.</span><span class="s1">msgBody</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+        sessionDao</span><span class="s2">.</span><span class="s1">uncache</span><span class="s4">(</span><span class="s1">message</span><span class="s2">.</span><span class="s1">msgBody</span><span class="s2">.</span><span class="s1">sessionId</span><span class="s4">)</span><span class="s2">;</span><span class="s1"> 
+    </span><span class="s4">}</span><span class="s1"> 
+</span><span class="s4">}</span><span class="s1"> 
+ 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">///**</span><span class="s1"> 
+</span><span class="s3">// * 直接操作Session属性，不会被保存</span><span class="s1"> 
+</span><span class="s3">// * 封装Session属性相关操作 Session属性发生改变时保存到Redis中并通知其它节点清空本地EhCache缓存</span><span class="s1"> 
+</span><span class="s3">// */</span><span class="s1"> 
+</span><span class="s3">//public class ShiroSessionService {</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//    private Logger logger = LoggerFactory.getLogger(ShiroSessionService.class);</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//    @Autowired</span><span class="s1"> 
+</span><span class="s3">//    private CachingShiroSessionDao sessionDao;</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//    public ShiroSession getSession() {</span><span class="s1"> 
+</span><span class="s3">//        return (ShiroSession) this.sessionDao.doReadSessionWithoutExpire(SecurityUtils.getSubject().getSession().getId());</span><span class="s1"> 
+</span><span class="s3">//    }</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//    public void setId(Serializable id) {</span><span class="s1"> 
+</span><span class="s3">//        ShiroSession session = this.getSession();</span><span class="s1"> 
+</span><span class="s3">//        session.setId(id);</span><span class="s1"> 
+</span><span class="s3">//        this.sessionDao.update(session);</span><span class="s1"> 
+</span><span class="s3">//        // 通过发布消息通知其他节点取消本地对session的缓存</span><span class="s1"> 
+</span><span class="s3">//        jedisUtil.publish(&quot;shiro.session.uncache&quot;, session.getId());</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//    }</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//    public void setStopTimestamp(Date stopTimestamp) {</span><span class="s1"> 
+</span><span class="s3">//        ShiroSession session = this.getSession();</span><span class="s1"> 
+</span><span class="s3">//        session.setStopTimestamp(stopTimestamp);</span><span class="s1"> 
+</span><span class="s3">//        this.sessionDao.update(session);</span><span class="s1"> 
+</span><span class="s3">//        // 通过发布消息通知其他节点取消本地对session的缓存</span><span class="s1"> 
+</span><span class="s3">//        jedisUtil.publish(&quot;shiro.session.uncache&quot;, session.getId());</span><span class="s1"> 
+</span><span class="s3">//    }</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//    public void setExpired(boolean expired) {</span><span class="s1"> 
+</span><span class="s3">//        ShiroSession session = this.getSession();</span><span class="s1"> 
+</span><span class="s3">//        session.setExpired(expired);</span><span class="s1"> 
+</span><span class="s3">//        this.sessionDao.update(session);</span><span class="s1"> 
+</span><span class="s3">//        // 通过发布消息通知其他节点取消本地对session的缓存</span><span class="s1"> 
+</span><span class="s3">//        jedisUtil.publish(&quot;shiro.session.uncache&quot;, session.getId());</span><span class="s1"> 
+</span><span class="s3">//    }</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//    public void setTimeout(long timeout) {</span><span class="s1"> 
+</span><span class="s3">//        ShiroSession session = this.getSession();</span><span class="s1"> 
+</span><span class="s3">//        session.setTimeout(timeout);</span><span class="s1"> 
+</span><span class="s3">//        this.sessionDao.update(session);</span><span class="s1"> 
+</span><span class="s3">//        // 通过发布消息通知其他节点取消本地对session的缓存</span><span class="s1"> 
+</span><span class="s3">//        jedisUtil.publish(&quot;shiro.session.uncache&quot;, session.getId());</span><span class="s1"> 
+</span><span class="s3">//    }</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//    public void setHost(String host) {</span><span class="s1"> 
+</span><span class="s3">//        ShiroSession session = this.getSession();</span><span class="s1"> 
+</span><span class="s3">//        session.setHost(host);</span><span class="s1"> 
+</span><span class="s3">//        this.sessionDao.update(session);</span><span class="s1"> 
+</span><span class="s3">//        // 通过发布消息通知其他节点取消本地对session的缓存</span><span class="s1"> 
+</span><span class="s3">//        jedisUtil.publish(&quot;shiro.session.uncache&quot;, session.getId());</span><span class="s1"> 
+</span><span class="s3">//    }</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//    public void setAttributes(Map&lt;Object, Object&gt; attributes) {</span><span class="s1"> 
+</span><span class="s3">//        ShiroSession session = this.getSession();</span><span class="s1"> 
+</span><span class="s3">//        session.setAttributes(attributes);</span><span class="s1"> 
+</span><span class="s3">//        this.sessionDao.update(session);</span><span class="s1"> 
+</span><span class="s3">//        // 通过发布消息通知其他节点取消本地对session的缓存</span><span class="s1"> 
+</span><span class="s3">//        jedisUtil.publish(&quot;shiro.session.uncache&quot;, session.getId());</span><span class="s1"> 
+</span><span class="s3">//    }</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//    public Map&lt;Object, Object&gt; getAttributes() {</span><span class="s1"> 
+</span><span class="s3">//        return this.getSession().getAttributes();</span><span class="s1"> 
+</span><span class="s3">//    }</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//    public void setAttribute(Object key, Object value) {</span><span class="s1"> 
+</span><span class="s3">//        ShiroSession session = this.getSession();</span><span class="s1"> 
+</span><span class="s3">//        session.setAttribute(key, value);</span><span class="s1"> 
+</span><span class="s3">//        this.sessionDao.update(session);</span><span class="s1"> 
+</span><span class="s3">//        // 通过发布消息通知其他节点取消本地对session的缓存</span><span class="s1"> 
+</span><span class="s3">//        jedisUtil.publish(&quot;shiro.session.uncache&quot;, session.getId());</span><span class="s1"> 
+</span><span class="s3">//    }</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//    public Object getAttribute(Object key) {</span><span class="s1"> 
+</span><span class="s3">//        return this.getSession().getAttribute(key);</span><span class="s1"> 
+</span><span class="s3">//    }</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//    public Collection&lt;Object&gt; getAttributeKeys() {</span><span class="s1"> 
+</span><span class="s3">//        return this.getSession().getAttributeKeys();</span><span class="s1"> 
+</span><span class="s3">//    }</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//    public Object removeAttribute(Object key) {</span><span class="s1"> 
+</span><span class="s3">//        ShiroSession session = this.getSession();</span><span class="s1"> 
+</span><span class="s3">//        Object res = session.removeAttribute(key);</span><span class="s1"> 
+</span><span class="s3">//        this.sessionDao.update(session);</span><span class="s1"> 
+</span><span class="s3">//        // 通过发布消息通知其他节点取消本地对session的缓存</span><span class="s1"> 
+</span><span class="s3">//        jedisUtil.publish(&quot;shiro.session.uncache&quot;, session.getId());</span><span class="s1"> 
+</span><span class="s3">//        return res;</span><span class="s1"> 
+</span><span class="s3">//    }</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//    /**</span><span class="s1"> 
+</span><span class="s3">//     * 在线会话的简单实现</span><span class="s1"> 
+</span><span class="s3">//     * 后续可以通过 keys统计数量，在通过SCAN 增量迭代取Session</span><span class="s1"> 
+</span><span class="s3">//     */</span><span class="s1"> 
+</span><span class="s3">//    @SuppressWarnings(&quot;unchecked&quot;)</span><span class="s1"> 
+</span><span class="s3">//    public List&lt;Map&lt;String, Object&gt;&gt; getActiveSessions() {</span><span class="s1"> 
+</span><span class="s3">//        List&lt;Map&lt;String, Object&gt;&gt; sessions = Lists.newLinkedList();</span><span class="s1"> 
+</span><span class="s3">//        Collection&lt;Session&gt; activeSession = sessionDao.getActiveSessions();</span><span class="s1"> 
+</span><span class="s3">//        for (Session session : activeSession) {</span><span class="s1"> 
+</span><span class="s3">//            Map&lt;String, Object&gt; map = Maps.newHashMap();</span><span class="s1"> 
+</span><span class="s3">//            SimplePrincipalCollection principalCollection = (SimplePrincipalCollection) session.getAttribute(DefaultSubjectContext.PRINCIPALS_SESSION_KEY);</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//            if (principalCollection != null) {</span><span class="s1"> 
+</span><span class="s3">//                List&lt;Object&gt; listPrincipals = principalCollection.asList();</span><span class="s1"> 
+</span><span class="s3">//                Map&lt;String, Object&gt; attributes = (Map&lt;String, Object&gt;) listPrincipals.get(0);</span><span class="s1"> 
+</span><span class="s3">//                map.put(&quot;loginName&quot;, listPrincipals.get(0));</span><span class="s1"> 
+</span><span class="s3">//                map.put(&quot;name&quot;, attributes.get(&quot;name&quot;));</span><span class="s1"> 
+</span><span class="s3">//                map.put(&quot;ip&quot;, attributes.get(&quot;ip&quot;));</span><span class="s1"> 
+</span><span class="s3">//            } else {</span><span class="s1"> 
+</span><span class="s3">//                map.put(&quot;loginName&quot;, &quot;未登录&quot;);</span><span class="s1"> 
+</span><span class="s3">//                map.put(&quot;name&quot;, &quot;未登录&quot;);</span><span class="s1"> 
+</span><span class="s3">//                map.put(&quot;ip&quot;, &quot;未登录&quot;);</span><span class="s1"> 
+</span><span class="s3">//            }</span><span class="s1"> 
+</span><span class="s3">//            map.put(&quot;startTimestamp&quot;, session.getStartTimestamp());</span><span class="s1"> 
+</span><span class="s3">//            map.put(&quot;lastAccessTime&quot;, session.getLastAccessTime());</span><span class="s1"> 
+</span><span class="s3">//            sessions.add(map);</span><span class="s1"> 
+</span><span class="s3">//        }</span><span class="s1"> 
+</span><span class="s3">//        return sessions;</span><span class="s1"> 
+</span><span class="s3">//    }</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//    public void flushRedis() {</span><span class="s1"> 
+</span><span class="s3">//        Collection&lt;Session&gt; activeSession = sessionDao.getActiveSessions();</span><span class="s1"> 
+</span><span class="s3">//        if (activeSession != null) {</span><span class="s1"> 
+</span><span class="s3">//            for (Session session : activeSession) {</span><span class="s1"> 
+</span><span class="s3">//                try {</span><span class="s1"> 
+</span><span class="s3">//                    sessionDao.doDelete(session);</span><span class="s1"> 
+</span><span class="s3">//                } catch (Exception e) {</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//                }</span><span class="s1"> 
+</span><span class="s3">//            }</span><span class="s1"> 
+</span><span class="s3">//        }</span><span class="s1"> 
+</span><span class="s3">//    }</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//    public void flushEhCache() {</span><span class="s1"> 
+</span><span class="s3">//        Set&lt;Session&gt; sessions = Sets.newHashSet();</span><span class="s1"> 
+</span><span class="s3">//        Collection&lt;Session&gt; ehCacheActiveSession = sessionDao.getEhCacheActiveSessions();</span><span class="s1"> 
+</span><span class="s3">//        Collection&lt;Session&gt; activeSession = sessionDao.getActiveSessions();</span><span class="s1"> 
+</span><span class="s3">//        if (CollectionUtils.isNotEmpty(ehCacheActiveSession)) {</span><span class="s1"> 
+</span><span class="s3">//            sessions.addAll(ehCacheActiveSession);</span><span class="s1"> 
+</span><span class="s3">//        }</span><span class="s1"> 
+</span><span class="s3">//        if (CollectionUtils.isNotEmpty(activeSession)) {</span><span class="s1"> 
+</span><span class="s3">//            sessions.addAll(activeSession);</span><span class="s1"> 
+</span><span class="s3">//        }</span><span class="s1"> 
+</span><span class="s3">//        for (Session session : sessions) {</span><span class="s1"> 
+</span><span class="s3">//            try {</span><span class="s1"> 
+</span><span class="s3">//                sessionDao.uncache(session.getId());</span><span class="s1"> 
+</span><span class="s3">//            } catch (Exception e) {</span><span class="s1"> 
+</span><span class="s3">//            }</span><span class="s1"> 
+</span><span class="s3">//        }</span><span class="s1"> 
+</span><span class="s3">//        logger.info(&quot;flushEhCache Project EhCacheActiveSessions {} &quot;, sessionDao.getEhCacheActiveSessions().size());</span><span class="s1"> 
+</span><span class="s3">//    }</span><span class="s1"> 
+</span><span class="s3">//</span><span class="s1"> 
+</span><span class="s3">//    public void flushAll() {</span><span class="s1"> 
+</span><span class="s3">//        Collection&lt;Session&gt; activeSession = sessionDao.getActiveSessions();</span><span class="s1"> 
+</span><span class="s3">//        if (activeSession != null) {</span><span class="s1"> 
+</span><span class="s3">//            for (Session session : activeSession) {</span><span class="s1"> 
+</span><span class="s3">//                try {</span><span class="s1"> 
+</span><span class="s3">//                    sessionDao.delete(session);</span><span class="s1"> 
+</span><span class="s3">//                } catch (Exception e) {</span><span class="s1"> 
+</span><span class="s3">//                }</span><span class="s1"> 
+</span><span class="s3">//            }</span><span class="s1"> 
+</span><span class="s3">//        }</span><span class="s1"> 
+</span><span class="s3">//    }</span><span class="s1"> 
+</span><span class="s3">//}</span><span class="s1"> 
+</span></pre>
+</body>
+</html>

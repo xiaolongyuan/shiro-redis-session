@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:util="http://www.springframework.org/schema/util" xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+	http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd">
+
+
+    <description>Shiro安全配置</description>
+
+    <!-- Shiro's main business-tier object for web-enabled applications -->
+    <bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
+        <property name="realm" ref="shiroDbRealm"/>
+        <!-- 可选项 最好使用,SessionDao,中 doReadSession 读取过于频繁了-->
+        <property name="cacheManager" ref="shiroEhcacheManager"/>
+        <!--可选项 默认使用ServletContainerSessionManager，直接使用容器的HttpSession，可以通过配置sessionManager，使用DefaultWebSessionManager来替代-->
+        <property name="sessionManager" ref="sessionManager"/>
+    </bean>
+
+    <!-- 項目自定义的Realm -->
+    <bean id="shiroDbRealm" class="io.longyuan.shiro.redissession.realm.ShiroDbRealm"/>
+
+    <!-- Shiro Filter -->
+    <bean id="shiroFilter" class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">
+        <property name="securityManager" ref="securityManager"/>
+        <!-- 指向登陆路径,整合spring时指向控制器方法地址 -->
+        <property name="loginUrl" value="/login"/>
+        <property name="successUrl" value="/"/>
+        <!-- 可选配置，通过实现自己的AuthenticatingFilter实现表单的自定义 -->
+        <property name="filters">
+            <util:map>
+                <entry key="authc">
+                    <bean class="io.longyuan.shiro.redissession.filter.MyAuthenticationFilter"/>
+                </entry>
+            </util:map>
+        </property>
+
+        <property name="filterChainDefinitions">
+            <value>
+                /login = authc
+                /logout = logout
+                /static/** = anon
+                /** = user
+            </value>
+        </property>
+    </bean>
+
+    <!-- 用户授权信息Cache, 采用EhCache，本地缓存最长时间应比中央缓存时间短一些，以确保Session中doReadSession方法调用时更新中央缓存过期时间 -->
+    <bean id="shiroEhcacheManager" class="org.apache.shiro.cache.ehcache.EhCacheManager">
+        <property name="cacheManagerConfigFile" value="classpath:security/ehcache-shiro.xml"/>
+    </bean>
+
+    <bean id="sessionManager" class="org.apache.shiro.web.session.mgt.DefaultWebSessionManager">
+        <!-- 设置全局会话超时时间，默认30分钟(1800000) -->
+        <property name="globalSessionTimeout" value="1800000"/>
+        <!-- 是否在会话过期后会调用SessionDAO的delete方法删除会话 默认true-->
+        <property name="deleteInvalidSessions" value="false"/>
+        <!-- 是否开启会话验证器任务 默认true -->
+        <property name="sessionValidationSchedulerEnabled" value="false"/>
+        <!-- 会话验证器调度时间 -->
+        <property name="sessionValidationInterval" value="1800000"/>
+        <property name="sessionFactory" ref="sessionFactory"/>
+        <property name="sessionDAO" ref="cachingShiroSessionDao"/>
+        <!-- 默认JSESSIONID，同tomcat/jetty在cookie中缓存标识相同，修改用于防止访问404页面时，容器生成的标识把shiro的覆盖掉 -->
+        <property name="sessionIdCookie">
+            <bean class="org.apache.shiro.web.servlet.SimpleCookie">
+                <constructor-arg name="name" value="SHRIOSESSIONID"/>
+            </bean>
+        </property>
+        <property name="sessionListeners">
+            <list>
+                <ref bean="sessionListener"/>
+            </list>
+        </property>
+    </bean>
+
+    <!-- 自定义Session工厂方法 返回会标识是否修改主要字段的自定义Session-->
+    <bean id="sessionFactory" class="io.longyuan.shiro.redissession.session.ShiroSessionFactory"/>
+
+    <!-- 保证实现了Shiro内部lifecycle函数的bean执行 -->
+    <bean id="lifecycleBeanPostProcessor" class="org.apache.shiro.spring.LifecycleBeanPostProcessor"/>
+
+    <!-- AOP式方法级权限检查 -->
+    <bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator"
+          depends-on="lifecycleBeanPostProcessor">
+        <property name="proxyTargetClass" value="true"/>
+    </bean>
+    <bean class="org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor">
+        <property name="securityManager" ref="securityManager"/>
+    </bean>
+
+
+    <bean id="sessionListener" class="io.longyuan.shiro.redissession.listener.ShiroSessionListener" >
+        <property name="sessionDao" ref="cachingShiroSessionDao" />
+        <property name="shiroSessionService" ref="shiroSessionService" />
+    </bean>
+
+    <bean id="cachingShiroSessionDao" class="io.longyuan.shiro.redissession.session.CachingShiroSessionDao">
+        <property name="sessionRepository" ref="shiroSessionRepository"/>
+    </bean>
+
+    <bean id="shiroSessionRepository" class="io.longyuan.shiro.redissession.service.impl.ShiroSessionRepositoryImpl">
+        <property name="redisTemplate" ref="redisTemplate"/>
+    </bean>
+
+    <bean id="shiroSessionService" class="io.longyuan.shiro.redissession.service.ShiroSessionService">
+        <property name="redisTemplate" ref="redisTemplate"/>
+        <property name="sessionDao" ref="cachingShiroSessionDao"/>
+    </bean>
+
+
+
+</beans>
