@@ -18,3 +18,6 @@ github 地址
 
 oschina 地址
 	http://git.oschina.net/xiaolongyuan/shiro-redis-session
+	
+主要参考：
+https://github.com/sgq0085/learn 替换redis使用为spring data redis
