@@ -12,11 +12,12 @@ shiro-redis-session-webapp
 ###Issues：
 https://github.com/xiaolongyuan/shiro-redis-session/issues	
 ###RoadMap:
-修复已知问题
-添加accessToken使用及示例
+* 修复已知问题
+* 添加accessToken使用及示例
 	
 ###主要参考：
 https://github.com/sgq0085/learn 替换redis使用为spring data redis
+
 
 ###推荐文章：
 * Shiro通过Redis管理会话实现集群 http://sgq0085.iteye.com/blog/2170405 
