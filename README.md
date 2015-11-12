@@ -25,6 +25,7 @@ https://github.com/sgq0085/learn 替换redis使用为spring data redis
 > 理解OAuth 2.0 http://www.ruanyifeng.com/blog/2014/05/oauth_2_0.html
 > 使用Token作为凭证，从App免登陆跳转到Web是否足够安全？ http://segmentfault.com/q/1010000002641130
 > md语法 https://github.com/guoyunsky/Markdown-Chinese-Demo
+
 ###项目依赖：
 > 	shiro 1.2.3+
 > 	spring data redis 1.6.0+
