@@ -21,3 +21,6 @@ oschina 地址
 	
 主要参考：
 https://github.com/sgq0085/learn 替换redis使用为spring data redis
+
+推荐文章：
+Shiro通过Redis管理会话实现集群 http://sgq0085.iteye.com/blog/2170405 
