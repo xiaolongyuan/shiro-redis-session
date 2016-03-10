@@ -1,25 +1,26 @@
 
 使用redis作为shiro实现集群会话管理，并可配置ehcache作为进程内缓存，通过redis消息订阅发布实现session缓存统一
 
-详细介绍见 Shiro通过Redis管理会话实现集群 http://sgq0085.iteye.com/blog/2170405 
+* shiro-redis-session
+	+ jar
+* shiro-redis-session-webapp
+	+ 示例demo
 
-shiro-redis-session
-	jar
-shiro-redis-session-webapp
-	示例demo
-	
+IDEA 需安装 lombok 插件
+> 插件介绍  https://projectlombok.org/
+
 ###Issues：
-https://github.com/xiaolongyuan/shiro-redis-session/issues	
+https://github.com/xiaolongyuan/shiro-redis-session/issues
 ###RoadMap:
 * 修复已知问题
 * 添加accessToken使用及示例
-	
+
 ###主要参考：
 https://github.com/sgq0085/learn 替换redis使用为spring data redis
 
 
 ###推荐文章：
-* Shiro通过Redis管理会话实现集群 http://sgq0085.iteye.com/blog/2170405 
+* Shiro通过Redis管理会话实现集群 http://sgq0085.iteye.com/blog/2170405
 * shiro教程 http://jinnianshilongnian.iteye.com/category/305053
 * JWT 在前后端分离中的应用与实践 http://www.open-open.com/lib/view/open1433995002942.html
 * 理解OAuth 2.0 http://www.ruanyifeng.com/blog/2014/05/oauth_2_0.html
